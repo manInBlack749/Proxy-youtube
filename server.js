@@ -17,7 +17,7 @@ app.get("/proxy",async(req,res)=>{
        res.json(data);
       } catch(err){
         console.error(err);
-        res.status(500).json({error:"error with the socialcount");
+        res.status(500).json({error:"error with the socialcount"});
       } 
 });
 
