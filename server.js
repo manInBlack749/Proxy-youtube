@@ -1,6 +1,8 @@
 const express from "express";
 const fetch from "node-fetch";
+const dotenv from "dotenv" ;
 
+dotenv.config();
 const app=express();
 
 app.get("/proxy",async(req,res)=>{
