@@ -9,7 +9,7 @@ app.get("/proxy",async(req,res)=>{
       try{
        const url=req.query.url;
        if(!url)
-       res.status(404).json({error:"you missed the url"});
+       return res.status(404).json({error:"you missed the url"});
        
        const response= await fetch(url);
        const data= await response.json();
@@ -22,4 +22,4 @@ app.get("/proxy",async(req,res)=>{
 });
 
 const PORT = process.env.PORT || 3000;
-app.listener(PORT,()=>{console.log("le serveur est en marche")})
+app.listen(PORT,()=>{console.log("le serveur est en marche")})
