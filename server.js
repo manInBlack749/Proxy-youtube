@@ -5,6 +5,9 @@ import dotenv from "dotenv" ;
 dotenv.config();
 const app=express();
 
+app.get("/test",(req,res)=>{
+      res.status(200).json({message:"le serveur est actif"});
+});
 app.get("/proxy",async(req,res)=>{
       try{
        const url=req.query.url;
