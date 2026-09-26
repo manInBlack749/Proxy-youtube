@@ -1,28 +1,152 @@
-import express from "express";
-import fetch from "node-fetch";
-import dotenv from "dotenv" ;
+const express = require("express");
 
-dotenv.config();
-const app=express();
+const app = express();
 
-app.get("/test",(req,res)=>{
-      res.status(200).json({message:"le serveur est actif"});
+const PORT = process.env.PORT || 10000;
+
+app.get("/api/loc-search", async (req, res) => {
+    const query = req.query.q || "";
+    const limit = Math.min(
+        parseInt(req.query.limit || "6", 10),
+        20
+    );
+
+    if (!query.trim()) {
+        return res.status(400).json({
+            error: "Missing search query"
+        });
+    }
+
+    try {
+        const locUrl = new URL(
+            "https://www.loc.gov/search/"
+        );
+
+        locUrl.searchParams.set("q", query);
+        locUrl.searchParams.set("fo", "json");
+        locUrl.searchParams.set("c", String(limit));
+
+        console.log(
+            `[LoC] Searching: ${query}`
+        );
+
+        const response = await fetch(locUrl);
+
+        if (!response.ok) {
+            throw new Error(
+                `Library of Congress returned ${response.status}`
+            );
+        }
+
+        const data = await response.json();
+
+        const results = Array.isArray(data.results)
+            ? data.results
+            : [];
+
+        const normalized = results.map(item => {
+
+            const imageUrls = Array.isArray(item.image_url)
+                ? item.image_url
+                : [];
+
+            const bestImage =
+                imageUrls[imageUrls.length - 1] || "";
+
+            const cleanImage =
+                bestImage.split("#")[0];
+
+            const subjects = Array.isArray(item.subject)
+                ? item.subject
+                : [];
+
+            const formats = Array.isArray(item.original_format)
+                ? item.original_format
+                : [];
+
+            return {
+                id:
+                    item.id ||
+                    item.url ||
+                    item.title,
+
+                title:
+                    item.title ||
+                    "",
+
+                thumbnail:
+                    cleanImage,
+
+                url:
+                    cleanImage,
+
+                landing_url:
+                    item.url ||
+                    "",
+
+                creator:
+                    Array.isArray(item.contributor)
+                        ? item.contributor.join(", ")
+                        : item.contributor || "",
+
+                source:
+                    "loc",
+
+                license:
+                    item.rights_information ||
+                    item.rights_advisory ||
+                    (
+                        item.unrestricted
+                            ? "No known restrictions"
+                            : ""
+                    ),
+
+                tags: [
+                    ...subjects,
+                    ...formats,
+                    ...(Array.isArray(item.location)
+                        ? item.location
+                        : [])
+                ],
+
+                date:
+                    item.date ||
+                    "",
+
+                unrestricted:
+                    item.unrestricted === true
+            };
+        });
+
+        res.json({
+            query,
+            count: normalized.length,
+            results: normalized
+        });
+
+    } catch (error) {
+
+        console.error(
+            "[LoC] Search failed:",
+            error
+        );
+
+        res.status(502).json({
+            error: "Library of Congress search failed",
+            message: error.message
+        });
+    }
 });
-app.get("/proxy",async(req,res)=>{
-      try{
-       const url=req.query.url;
-       if(!url)
-       return res.status(404).json({error:"you missed the url"});
-       
-       const response= await fetch(url);
-       const data= await response.json();
-       
-       res.json(data);
-      } catch(err){
-        console.error(err);
-        res.status(500).json({error:"error with the socialcount"});
-      } 
+
+app.get("/", (req, res) => {
+    res.json({
+        status: "ok",
+        service: "Visual Finder LoC Proxy"
+    });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT,()=>{console.log("le serveur est en marche")})
+app.listen(PORT, () => {
+    console.log(
+        `LoC Proxy running on port ${PORT}`
+    );
+});
